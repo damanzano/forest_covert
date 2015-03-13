@@ -9,8 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn import metrics
 from sklearn import cross_validation
-from sklearn.grid_search import GridSearchCV
-from sklearn.svm import SVC
+from sklearn.ensemble import RandomForestClassifier
 from sklearn import preprocessing
 from time import time
 
@@ -69,38 +68,41 @@ print x_prod.shape
 # Training the model
 print("Fitting the model to the training set")
 t0 = time()
-param_grid = {'C': [1e3, 5e3, 1e4, 5e4, 1e5],
-              'gamma': [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.1], }
-model = GridSearchCV(SVC(kernel='rbf', class_weight='auto'), param_grid)
-model = model.fit(x_train_minmax, y_train)
-print("done in %0.3fs" % (time() - t0))
-print("Best parameters found by grid search:")
-print(model.best_estimator_)
+n_estimators = [100, 150, 200, 250, 300]
+results = [];
+for estimators in n_estimators:
+    model = RandomForestClassifier(n_estimators=estimators)
+    model = model.fit(x_train_minmax, y_train)
+    print("done in %0.3fs" % (time() - t0))
+
 
 ###############################################################################
 # Quantitative evaluation of the model quality on the test set
 
-print("Predicting people's names on the test set")
-t0 = time()
-y_pred = model.predict(x_test)
-print("done in %0.3fs" % (time() - t0))
-target_names=['Cover_Type1', 'Cover_Type2', 'Cover_Type3', 'Cover_Type4', 'Cover_Type5', 'Cover_Type6', 'Cover_Type7']
-#n_classes = target_names.shape[0]
-print "Classification report"
-print(metrics.classification_report(y_test, y_pred, target_names=target_names))
-print "Confusion matrix"
-print(metrics.confusion_matrix(y_test, y_pred))
+    print("Predicting people's names on the test set")
+    t0 = time()
+    y_pred = model.predict(x_test)
+    print("done in %0.3fs" % (time() - t0))
+    target_names=['Cover_Type1', 'Cover_Type2', 'Cover_Type3', 'Cover_Type4', 'Cover_Type5', 'Cover_Type6', 'Cover_Type7']
+    #n_classes = target_names.shape[0]
+    print "Classification report"
+    report = metrics.classification_report(y_test, y_pred, target_names=target_names)
+    print(report)
+    print "Confusion matrix"
+    cfm=metrics.confusion_matrix(y_test, y_pred)
+    print(cfm)
 
-
-
-# Predict with production data
-print ('Processing test data...')
-y_pred = model.predict(x_prod)
-# Save to file
-predictions_file = open("output/modelSVM.csv", "wb")
-open_file_object = csv.writer(predictions_file)
-open_file_object.writerow(["Id","Cover_Type"])
-open_file_object.writerows(zip(ids, y_pred.astype(np.int)))
-predictions_file.close()
-
+    # Predict with production data
+    print ('Processing test data...')
+    y_pred = model.predict(x_prod)
+    # Save to file
+    predictions_file = open("output/modelRF"+str(estimators)+".csv", "wb")
+    open_file_object = csv.writer(predictions_file)
+    open_file_object.writerow(["Id","Cover_Type"])
+    open_file_object.writerows(zip(ids, y_pred.astype(np.int)))
+    predictions_file.close()
+    result =[estimators, report, cfm]
+    results.append(result)
+print "##########################################################"
+print results
 print ('Done.')
